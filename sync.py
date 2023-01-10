@@ -1,13 +1,10 @@
 import json 
 import sqlite3
 import pprint
-
-#EXAMPLE QUERY
-#INSERT INTO mysql_table (column1, column2, …) VALUES (value1, value2, …);
+import time
 
 #Connect to db
 conn = sqlite3.connect('climbersapp.db')
-
 #Load json data
 expeditionsJSON = json.load(open('expeditions.json')) # open stream
 
@@ -41,7 +38,7 @@ def insertExpeditions():
 def insertRelations():
     stmt = "INSERT OR REPLACE INTO expedition_climbers (climber_id, expedition_id) VALUES (?,?)"
     cursorExe(stmt, expeditionClimberIDs)
-    print('Expeditions succesfully inserted !')
+    print('Relations succesfully inserted !')
     
 def cursorExe(stmt :str, data :tuple) -> None:
     conn = sqlite3.connect('climbersapp.db')
@@ -51,16 +48,9 @@ def cursorExe(stmt :str, data :tuple) -> None:
     #close connection to be more secure
     conn.close()
 
-def exportData() -> None:
+def syncData1() -> None:
     #prepare data for inserting
     for data in expeditionsJSON:
-        # print(data['id']) id, name, country, rank, height, prominence
-        # collectCountries = ''
-        # if len(data['mountain']['countries']) > 0:
-        #     for x in data['mountain']['countries']:
-        #         collectCountries += ' ' + x
-        # else:
-        #     collectCountries += '' + data['mountain']['countries'][0]
         #Step 1: Climbers
         for x in data['climbers']:
             #query to insert climbers;
@@ -69,46 +59,34 @@ def exportData() -> None:
             #append to list
             climbers.append(climber)
             expeditionClimberIDs.append(IDs)
-            insertClimbers()
+            
+        #Step 2: Mountains
+        mountain = (data['mountain']['name'], 
+                    data['mountain']['countries'][0],data['mountain']['rank'],
+                    data['mountain']['height'], data['mountain']['prominence'], data['mountain']['range'])
+        mountains.append(mountain)
+        
+    insertClimbers()
+    insertMountains()
+    insertRelations()
+
+def syncData2() -> None:
+            #Step 3: Expeditions
+    for data in expeditionsJSON:
         #get mountain ID's
         cursor = conn.cursor()
         cursor.execute(f"SELECT * FROM mountains WHERE name = '{data['mountain']['name']}'")
         fetchID = cursor.fetchone()
         conn.commit()
         
-
-            
-        
-        
-        mountain = (data['mountain']['name'], 
-                    data['mountain']['countries'][0],data['mountain']['rank'],
-                    data['mountain']['height'], data['mountain']['prominence'], data['mountain']['range'])
-        
+        #Make tuple
         expedition = (data['id'], data['name'], fetchID[0], 
                     data['start'], data['date'], 
                     data['country'], data['duration'], data['success'])
-        
         #append data to lists
-        mountains.append(mountain)
         expeditions.append(expedition)
-        
-
-            
-            
-
-# print(res)
-print(expeditionClimberIDs)
-        
-#check data before running insert
-
+    insertExpeditions()
     
-
-exportData()
-
-insertExpeditions()
-insertMountains()
-insertClimbers()
-insertRelations()
-
-
-# # checkData()
+syncData1()
+time.sleep(3)
+syncData2()
