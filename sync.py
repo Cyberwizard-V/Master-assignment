@@ -13,33 +13,9 @@ expeditionsJSON = json.load(open('expeditions.json')) # open stream
 
 climbers = []
 mountains = []
+expeditions = []
+expeditionClimberIDs = []
 
-#mean putting in a list
-
-#prepare data for inserting
-for data in expeditionsJSON:
-    # print(data['id']) id, name, country, rank, height, prominence
-    collectCountries = ''
-    if len(data['mountain']['countries']) > 0:
-        for x in data['mountain']['countries']:
-            collectCountries += ' ' + x
-    else:
-        collectCountries += '' + data['mountain']['countries'][0]
-        
-    mountain = (data['id'], data['mountain']['name'], 
-                collectCountries,data['mountain']['rank'],
-                data['mountain']['height'], data['mountain']['prominence'], data['mountain']['range'])
-    mountains.append(mountain)
-
-    for x in data['climbers']:
-        #query to insert climbers;
-        climber = (x['id'],x['first_name'],x['last_name'],x['nationality'],x['date_of_birth'])
-        climbers.append(climber)
-        
-#print(collectCountries)
-print(mountains)
-        
-#check data before running insert
 def checkData() -> str:
     if climbers:
         insertClimbers()
@@ -52,19 +28,87 @@ def insertClimbers():
     print('Climbers succesfully inserted !')
 
 def insertMountains():
-    stmt = "INSERT OR REPLACE INTO mountains (id, name, country, rank, height, prominence, range) VALUES (?,?,?,?,?,?,?)"
-    cursorExe(stmt, mountains)
+    res = tuple(set(mountains))
+    stmt = "INSERT OR REPLACE INTO mountains (name, country, rank, height, prominence, range) VALUES (?,?,?,?,?,?)"
+    cursorExe(stmt, res)
     print('Mountains succesfully inserted !')
     
+def insertExpeditions():
+    stmt = "INSERT OR REPLACE INTO expeditions (id, name, mountain_id, start_location, date, country, duration, success) VALUES (?,?,?,?,?,?,?,?)"
+    cursorExe(stmt, expeditions)
+    print('Expeditions succesfully inserted !')
+    
+def insertRelations():
+    stmt = "INSERT OR REPLACE INTO expedition_climbers (climber_id, expedition_id) VALUES (?,?)"
+    cursorExe(stmt, expeditionClimberIDs)
+    print('Expeditions succesfully inserted !')
     
 def cursorExe(stmt :str, data :tuple) -> None:
+    conn = sqlite3.connect('climbersapp.db')
     cursor = conn.cursor()
     cursor.executemany(stmt, data)
     conn.commit()
     #close connection to be more secure
     conn.close()
 
+def exportData() -> None:
+    #prepare data for inserting
+    for data in expeditionsJSON:
+        # print(data['id']) id, name, country, rank, height, prominence
+        # collectCountries = ''
+        # if len(data['mountain']['countries']) > 0:
+        #     for x in data['mountain']['countries']:
+        #         collectCountries += ' ' + x
+        # else:
+        #     collectCountries += '' + data['mountain']['countries'][0]
+        #Step 1: Climbers
+        for x in data['climbers']:
+            #query to insert climbers;
+            climber = (x['id'],x['first_name'],x['last_name'],x['nationality'],x['date_of_birth'])
+            IDs = (x['id'],data['id'])
+            #append to list
+            climbers.append(climber)
+            expeditionClimberIDs.append(IDs)
+            insertClimbers()
+        #get mountain ID's
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM mountains WHERE name = '{data['mountain']['name']}'")
+        fetchID = cursor.fetchone()
+        conn.commit()
+        
+
+            
+        
+        
+        mountain = (data['mountain']['name'], 
+                    data['mountain']['countries'][0],data['mountain']['rank'],
+                    data['mountain']['height'], data['mountain']['prominence'], data['mountain']['range'])
+        
+        expedition = (data['id'], data['name'], fetchID[0], 
+                    data['start'], data['date'], 
+                    data['country'], data['duration'], data['success'])
+        
+        #append data to lists
+        mountains.append(mountain)
+        expeditions.append(expedition)
+        
+
+            
+            
+
+# print(res)
+print(expeditionClimberIDs)
+        
+#check data before running insert
+
+    
+
+exportData()
+
+insertExpeditions()
 insertMountains()
-# checkData()
+insertClimbers()
+insertRelations()
 
 
+# # checkData()
