@@ -118,12 +118,12 @@ def checkandsync() -> str:
     else:
         @timer_func
         def sync() -> None:
-            print('(1/2) Trying to sync data 1')
+            print('(1/2) Trying to sync data 1...')
             #First part of syncing
             syncData1()
             #sleep when syncData1 is done
             sleep(0.1)
-            print('(2/2) Trying to sync data 2')
+            print('(2/2) Trying to sync data 2...')
             #Second part of syncing
             syncData2()
             return 1
